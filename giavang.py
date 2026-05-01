@@ -1,25 +1,26 @@
 import requests
 import os
 
-# Lấy Token và ID từ GitHub Secrets
-TOKEN = os.getenv('TELEGRAM_TOKEN')
-CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
+def gui_tin_nhan():
+    # Lấy thông tin từ GitHub Secrets
+    token = os.getenv('TELEGRAM_TOKEN')
+    chat_id = os.getenv('TELEGRAM_CHAT_ID')
 
-def test_bot():
-    # ĐỊA CHỈ URL PHẢI CÓ CHỮ "api." Ở ĐẦU
-    url = f"https://telegram.org{TOKEN}/sendMessage"
+    # ĐỊA CHỈ NÀY LÀ CỐ ĐỊNH, KHÔNG ĐƯỢC THAY ĐỔI
+    url = f"https://telegram.org{token}/sendMessage"
     
-    msg = "🚀 CHÚC MỪNG CƯỜNG TRẦN!\nBot đã thông mạch và gửi tin nhắn thành công rồi nhé!"
-    
-    data = {"chat_id": CHAT_ID, "text": msg}
-    
+    data = {
+        "chat_id": chat_id,
+        "text": "🔥 CHÚC MỪNG! Bot đã thực sự thông mạch rồi nhé Cường Trần!"
+    }
+
     try:
+        # Gửi tin nhắn
         r = requests.post(url, data=data)
-        # In ra để kiểm tra trong Log
-        print(f"Status Code: {r.status_code}")
-        print(f"Response: {r.text}")
+        print(f"Status: {r.status_code}")
+        print(f"Ket qua: {r.text}")
     except Exception as e:
-        print(f"Lỗi: {e}")
+        print(f"Loi: {e}")
 
 if __name__ == "__main__":
-    test_bot()
+    gui_tin_nhan()
