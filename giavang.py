@@ -2,47 +2,41 @@ import requests
 from bs4 import BeautifulSoup
 import os
 
-# Lấy thông tin từ GitHub Secrets
 TOKEN = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
 def gui_telegram(mess):
     url = f"https://telegram.org{TOKEN}/sendMessage"
-    data = {"chat_id": CHAT_ID, "text": mess}
-    requests.post(url, data=data)
+    requests.post(url, data={"chat_id": CHAT_ID, "text": mess})
 
-def kiem_tra_gia_vang():
-    # Nguồn tygia.vn (SJC) - Nguồn này cực kỳ ổn định cho bot
+def kiem_tra():
     url = "https://tygia.vn"
     headers = {'User-Agent': 'Mozilla/5.0'}
     
     try:
-        response = requests.get(url, headers=headers, timeout=20)
-        soup = BeautifulSoup(response.text, 'html.parser')
+        r = requests.get(url, headers=headers, timeout=15)
+        soup = BeautifulSoup(r.text, 'html.parser')
         
-        # Tìm giá bán ra của SJC
-        gia_element = soup.find("td", class_="price-sale")
+        # Tìm tất cả các thẻ <td> để lấy giá
+        cells = soup.find_all('td')
+        gia_so = 0
         
-        if gia_element:
-            gia_str = gia_element.get_text(strip=True)
-            # Chuyển đổi "85.500" -> 85.5
-            gia_so = float(gia_str.replace('.', '').replace(',', '.'))
-            
-            print(f"--- ĐÃ TÌM THẤY GIÁ: {gia_so} triệu ---")
-
-            # NGƯỠNG BÁO: Bạn đặt 200 để nó luôn báo về khi test nhé
-            GIA_BAO_DONG = 200.0 
-
-            if gia_so < GIA_BAO_DONG:
-                msg = f"💰 CẬP NHẬT GIÁ VÀNG SJC\n-------------------\n👉 Bán ra: {gia_so} triệu/lượng\n📍 Nguồn: tygia.vn"
-                gui_telegram(msg)
-                print("Gửi Telegram thành công!")
+        for cell in cells:
+            text = cell.get_text(strip=True)
+            # Nếu thấy chuỗi có dạng "85.000" hoặc tương tự
+            if "." in text and text.replace(".", "").isdigit():
+                gia_so = float(text.replace(".", "")) / 1000
+                break
+        
+        if gia_so > 0:
+            print(f"Gia tim thay: {gia_so}")
+            msg = f"💰 GIÁ VÀNG SJC: {gia_so} triệu/lượng\n📍 Nguồn: tygia.vn"
+            gui_telegram(msg)
         else:
-            print("Lỗi: Không tìm thấy thẻ giá vàng trên web.")
-            gui_telegram("Bot kết nối tốt nhưng web đổi giao diện, không lấy được giá!")
+            gui_telegram("Bot chạy được nhưng không tìm thấy con số giá vàng.")
             
     except Exception as e:
-        print(f"Lỗi: {e}")
+        print(f"Loi: {e}")
 
 if __name__ == "__main__":
-    kiem_tra_gia_vang()
+    kiem_tra()
