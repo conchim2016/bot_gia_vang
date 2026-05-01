@@ -1,6 +1,6 @@
 import requests
-from bs4 import BeautifulSoup
 import os
+import re
 
 # 1. Lấy thông tin từ GitHub Secrets
 TOKEN = os.getenv('TELEGRAM_TOKEN')
@@ -9,50 +9,43 @@ CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 def gui_telegram(mess):
     url = f"https://telegram.org{TOKEN}/sendMessage"
     data = {"chat_id": CHAT_ID, "text": mess}
-    try:
-        r = requests.post(url, data=data)
-        print(f"Telegram status: {r.status_code}")
-    except Exception as e:
-        print(f"Lỗi gửi tin: {e}")
+    r = requests.post(url, data=data)
+    print(f"Telegram status: {r.status_code}")
 
 def kiem_tra_gia_vang():
-    # Nguồn SJC chính thống
+    # Nguồn dự phòng rất nhẹ và dễ lấy
     url = "https://sjc.com.vn"
     headers = {'User-Agent': 'Mozilla/5.0'}
     
     try:
         response = requests.get(url, headers=headers, timeout=20)
-        response.encoding = 'utf-8'
-        soup = BeautifulSoup(response.text, 'html.parser')
+        text = response.text
         
-        # Tìm bảng giá, lấy ô giá bán đầu tiên
-        gia_element = soup.find("td", class_="txt_center") 
+        # Tìm tất cả các số có dạng xx,xx (ví dụ 85,50 hoặc 89,00)
+        # Đây là định dạng giá vàng trên trang SJC
+        prices = re.findall(r'\d{2},\d{2}', text)
         
-        if gia_element:
-            # Lấy toàn bộ danh sách các ô giá
-            all_prices = soup.find_all("td", class_="txt_center")
-            # Thông thường ô giá bán SJC TP.HCM nằm ở vị trí thứ 3 (index 2)
-            gia_str = all_prices[2].get_text(strip=True)
-            
-            # Xử lý chuỗi "85,50" -> 85.5
+        if prices:
+            # Lấy con số đầu tiên tìm thấy
+            gia_str = prices[0]
             gia_so = float(gia_str.replace(',', '.'))
             
-            print(f"--- DA TIM THAY GIA: {gia_so} trieu ---")
+            print(f"--- DA TIM THAY GIA: {gia_so} ---")
 
-            # Đặt ngưỡng 200 để chắc chắn nổ tin nhắn ngay lập tức
+            # Ngưỡng test: luôn báo tin
             GIA_BAO_DONG = 200.0 
 
             if gia_so < GIA_BAO_DONG:
-                msg = f"💰 GIÁ VÀNG SJC HÔM NAY\n-------------------\n👉 Bán ra: {gia_so} triệu/lượng\n📍 Nguồn: SJC.com.vn"
+                msg = f"💰 GIÁ VÀNG SJC\nBán ra: {gia_so} triệu/lượng\nNguồn: SJC"
                 gui_telegram(msg)
-                print("Đã gửi tin thành công!")
         else:
-            # Nếu không tìm thấy thẻ cụ thể, gửi tin báo lỗi để bạn biết
-            print("Không tìm thấy thẻ giá, đang gửi tin báo lỗi về Telegram...")
-            gui_telegram("Bot chạy được nhưng không tìm thấy dữ liệu trên web SJC. Cần kiểm tra lại code!")
+            # Nếu vẫn không thấy số, gửi tin nhắn báo kết nối thông suốt
+            print("Không tìm thấy số giá vàng, gửi tin test kết nối...")
+            gui_telegram("Bot đã kết nối được GitHub nhưng chưa lấy được số từ Web SJC.")
             
     except Exception as e:
-        print(f"Lỗi hệ thống: {e}")
+        print(f"Loi: {e}")
+        gui_telegram(f"Bot gặp lỗi hệ thống: {e}")
 
 if __name__ == "__main__":
     kiem_tra_gia_vang()
