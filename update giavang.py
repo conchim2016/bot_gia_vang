@@ -1,9 +1,8 @@
 import requests
 from bs4 import BeautifulSoup
 import os
-import re
 
-# 1. Lấy thông tin bảo mật từ GitHub Secrets
+# 1. Lấy thông tin từ GitHub Secrets
 TOKEN = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
@@ -13,42 +12,40 @@ def gui_telegram(mess):
     requests.post(url, data=data)
 
 def kiem_tra_gia_vang():
-    url = "https://giavang.org/"
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+    # Nguồn này dữ liệu rất sạch, khó lỗi
+    url = "https://sjc.com.vn"
+    headers = {'User-Agent': 'Mozilla/5.0'}
     
     try:
-        response = requests.get(url, headers=headers)
-        response.encoding = 'utf-8' # Đảm bảo đọc đúng tiếng Việt
+        response = requests.get(url, headers=headers, timeout=10)
+        response.encoding = 'utf-8'
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        # Lấy toàn bộ chữ trên trang web
-        full_text = soup.get_text()
+        # Tìm bảng giá SJC
+        # Chúng ta sẽ tìm tất cả các thẻ <td> có class là 'txt_center'
+        items = soup.find_all('td', class_='txt_center')
         
-        # Dùng Regex để tìm cụm "Bán ra" kèm con số phía sau
-        # Nó sẽ tìm dạng: "Bán ra 85.500" hoặc "Bán ra 165.500"
-        match = re.search(r'Bán\s+ra\s*([\d\.,]+)', full_text)
-        
-        if match:
-            gia_chu = match.group(1)
-            # Làm sạch số: bỏ dấu chấm/phẩy thừa
-            gia_sach = gia_chu.replace('.', '').replace(',', '')
-            # Chuyển về đơn vị triệu (VD: 165500 -> 165.5 triệu)
-            gia_so = float(gia_sach) / 1000
+        if len(items) >= 3:
+            # Vị trí số 3 (index 2) thường là giá Bán ra của SJC TP.HCM
+            gia_str = items[2].get_text(strip=True) 
             
-            print(f"--- DA TIM THAY GIA: {gia_so} trieu ---")
+            # Chuyển đổi "85,50" -> 85.5
+            gia_so = float(gia_str.replace(',', '.'))
+            
+            print(f"--- DA TIM THAY GIA SJC: {gia_so} ---")
 
-            # NGƯỠNG BÁO ĐỘNG (Bạn sửa 2 số này theo ý mình)
-            GIA_BAO_DONG_TEST = 200.0 
+            # Đặt ngưỡng 200 để chắc chắn nó sẽ gửi tin nhắn báo về máy bạn ngay
+            GIA_BAO_DONG = 200.0 
 
-            if gia_so < GIA_BAO_DONG_TEST:
-                msg = f"🔔 Cập nhật giá vàng: {gia_so} triệu\nNguồn: {url}"
+            if gia_so < GIA_BAO_DONG:
+                msg = f"🔔 SJC CẬP NHẬT: {gia_so} triệu/lượng\nNguồn: SJC.com.vn"
                 gui_telegram(msg)
-                print("Da gui tin nhan!")
+                print("Da gui tin nhan thanh cong!")
         else:
-            print("LỖI: Khong tìm thay chu 'Ban ra' tren trang web.")
+            print("Lỗi: Cấu trúc bảng giá đã thay đổi.")
             
     except Exception as e:
-        print(f"Lỗi hệ thống: {e}")
+        print(f"Loi: {e}")
 
 if __name__ == "__main__":
     kiem_tra_gia_vang()
