@@ -9,49 +9,44 @@ CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 def gui_telegram(mess):
     url = f"https://telegram.org{TOKEN}/sendMessage"
     data = {"chat_id": CHAT_ID, "text": mess}
-    try:
-        requests.post(url, data=data)
-    except Exception as e:
-        print(f"Lỗi gửi Telegram: {e}")
+    requests.post(url, data=data)
 
 def kiem_tra_gia_vang():
     url = "https://giavang.org"
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    }
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
     
     try:
         response = requests.get(url, headers=headers)
         soup = BeautifulSoup(response.content, 'html.parser')
         
-        # Tìm giá vàng SJC bán ra trên giavang.org
-        # Lưu ý: Script đang tìm thẻ <td> có class là "ban-ra"
-        gia_element = soup.find("td", class_="ban-ra") 
+        # Cách tìm mới: Tìm tất cả các ô có class 'ban-ra'
+        gia_elements = soup.find_all("td", class_="ban-ra")
         
-        if gia_element:
-            gia_str = gia_element.text.strip()
-            # Chuyển đổi định dạng "85.500.000" thành số 85.5
+        if gia_elements:
+            # Lấy ô đầu tiên (thường là giá SJC)
+            gia_str = gia_elements[0].get_text(strip=True)
+            
+            # Xử lý chuỗi: xóa dấu chấm, đổi dấu phẩy thành chấm để chuyển sang số
+            # Ví dụ: "85.000.000" -> "85000000" -> 85.0
             gia_so = float(gia_str.replace('.', '').replace(',', '.')) / 1000000
             
-            # --- BẠN CÀI ĐẶT NGƯỠNG GIÁ MUỐN NHẬN THÔNG BÁO TẠI ĐÂY ---
-            GIA_CAO_HON = 165.0  # Ví dụ: Báo khi giá vượt 165 triệu
-            GIA_THAP_HON = 170.0  # Ví dụ: Báo khi giá dưới 170 triệu
-            # -------------------------------------------------------
+            print(f"--- DA TIM THAY GIA: {gia_so} trieu ---")
 
-            if gia_so >= GIA_CAO_HON:
-                thong_bao = f"🚀 GIÁ VÀNG TĂNG CAO: {gia_so} triệu\nLink xem: {url}"
+            # Cài đặt ngưỡng để test (Bạn có thể sửa lại sau)
+            GIA_BAO_DONG = 100.0 # Để số cao hẳn để test gửi tin nhắn
+
+            if gia_so < GIA_BAO_DONG:
+                thong_bao = f"📉 Cập nhật giá vàng: {gia_so} triệu\nLink: {url}"
                 gui_telegram(thong_bao)
-            elif gia_so <= GIA_THAP_HON:
-                thong_bao = f"📉 GIÁ VÀNG GIẢM RẺ: {gia_so} triệu\nLink xem: {url}"
-                gui_telegram(thong_bao)
+                print("Da gui tin nhan qua Telegram!")
             else:
-                # Nếu giá nằm ở giữa, chỉ in ra màn hình Log để theo dõi
-                print(f"Giá hiện tại là {gia_so} triệu. Chưa đạt ngưỡng báo động.")
+                print("Chua dat nguong bao dong.")
         else:
-            print("Không tìm thấy dữ liệu giá vàng trên trang web.")
+            print("LỖI: Khong tìm thay the <td class='ban-ra'>. Web có the da doi giao dien.")
             
     except Exception as e:
-        print(f"Lỗi khi cào dữ liệu: {e}")
+        print(f"Lỗi hệ thống: {e}")
 
 if __name__ == "__main__":
     kiem_tra_gia_vang()
+
