@@ -35,7 +35,7 @@ def kiem_tra_gia_vang():
             
             # --- BẠN CÀI ĐẶT NGƯỠNG GIÁ MUỐN NHẬN THÔNG BÁO TẠI ĐÂY ---
             GIA_CAO_HON = 165.0  # Ví dụ: Báo khi giá vượt 165 triệu
-            GIA_THAP_HON = 150.0  # Ví dụ: Báo khi giá dưới 150 triệu
+            GIA_THAP_HON = 170.0  # Ví dụ: Báo khi giá dưới 170 triệu
             # -------------------------------------------------------
 
             if gia_so >= GIA_CAO_HON:
