@@ -1,27 +1,23 @@
-name: Gold Price Bot
-
+name: Gold Bot
 on:
-  schedule:
-    - cron: '0 * * * *'  # Lệnh này bảo GitHub cứ mỗi tiếng chạy 1 lần
-  workflow_dispatch:      # Lệnh này tạo cái nút để bạn bấm chạy thử luôn
+  workflow_dispatch: # Nút bấm chạy thủ công
 
 jobs:
-  run-bot:
+  run:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
 
-      - name: Install dependencies
-        run: pip install requests beautifulsoup4
-
-      - name: Run script
+      - name: Run
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python giavang.py
+        run: |
+          pip install requests
+          python giavang.py
