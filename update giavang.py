@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import os
+import sys
 
 # 1. Lấy thông tin từ GitHub Secrets
 TOKEN = os.getenv('TELEGRAM_TOKEN')
@@ -9,43 +10,44 @@ CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 def gui_telegram(mess):
     url = f"https://telegram.org{TOKEN}/sendMessage"
     data = {"chat_id": CHAT_ID, "text": mess}
-    requests.post(url, data=data)
+    try:
+        r = requests.post(url, data=data)
+        print(f"Telegram status: {r.status_code}")
+    except Exception as e:
+        print(f"Lỗi gửi tin: {e}")
 
 def kiem_tra_gia_vang():
-    # Nguồn này dữ liệu rất sạch, khó lỗi
-    url = "https://sjc.com.vn"
+    # Nguồn tygia.vn rất ổn định và dễ lấy số
+    url = "https://tygia.vn"
     headers = {'User-Agent': 'Mozilla/5.0'}
     
     try:
-        response = requests.get(url, headers=headers, timeout=10)
+        response = requests.get(url, headers=headers, timeout=15)
         response.encoding = 'utf-8'
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        # Tìm bảng giá SJC
-        # Chúng ta sẽ tìm tất cả các thẻ <td> có class là 'txt_center'
-        items = soup.find_all('td', class_='txt_center')
+        # Tìm giá SJC bán ra (thường nằm trong thẻ td có class 'price-sale')
+        gia_element = soup.find("td", class_="price-sale")
         
-        if len(items) >= 3:
-            # Vị trí số 3 (index 2) thường là giá Bán ra của SJC TP.HCM
-            gia_str = items[2].get_text(strip=True) 
+        if gia_element:
+            gia_str = gia_element.get_text(strip=True)
+            # Chuyển đổi định dạng "85.500" -> 85.5
+            gia_so = float(gia_str.replace('.', '').replace(',', '.'))
             
-            # Chuyển đổi "85,50" -> 85.5
-            gia_so = float(gia_str.replace(',', '.'))
-            
-            print(f"--- DA TIM THAY GIA SJC: {gia_so} ---")
+            print(f"--- TIM THAY GIA: {gia_so} trieu ---")
 
-            # Đặt ngưỡng 200 để chắc chắn nó sẽ gửi tin nhắn báo về máy bạn ngay
+            # NGƯỠNG BÁO: Đặt số cao để test nổ tin nhắn ngay lập tức
             GIA_BAO_DONG = 200.0 
 
             if gia_so < GIA_BAO_DONG:
-                msg = f"🔔 SJC CẬP NHẬT: {gia_so} triệu/lượng\nNguồn: SJC.com.vn"
+                msg = f"🔔 CẬP NHẬT GIÁ VÀNG\n💰 Giá bán: {gia_so} triệu/lượng\n📍 Nguồn: tygia.vn"
                 gui_telegram(msg)
-                print("Da gui tin nhan thanh cong!")
+                print("Đã gửi tin thành công!")
         else:
-            print("Lỗi: Cấu trúc bảng giá đã thay đổi.")
+            print("Lỗi: Không tìm thấy thẻ chứa giá vàng trên web.")
             
     except Exception as e:
-        print(f"Loi: {e}")
+        print(f"Lỗi hệ thống: {e}")
 
 if __name__ == "__main__":
     kiem_tra_gia_vang()
