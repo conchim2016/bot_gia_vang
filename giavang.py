@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import os
+import re
 
 # 1. Lấy thông tin bảo mật từ GitHub Secrets
 TOKEN = os.getenv('TELEGRAM_TOKEN')
@@ -12,41 +13,42 @@ def gui_telegram(mess):
     requests.post(url, data=data)
 
 def kiem_tra_gia_vang():
-    url = "https://giavang.org"
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+    url = "https://giavang.org/"
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
     
     try:
         response = requests.get(url, headers=headers)
-        soup = BeautifulSoup(response.content, 'html.parser')
+        response.encoding = 'utf-8' # Đảm bảo đọc đúng tiếng Việt
+        soup = BeautifulSoup(response.text, 'html.parser')
         
-        # Cách tìm mới: Tìm tất cả các ô có class 'ban-ra'
-        gia_elements = soup.find_all("td", class_="ban-ra")
+        # Lấy toàn bộ chữ trên trang web
+        full_text = soup.get_text()
         
-        if gia_elements:
-            # Lấy ô đầu tiên (thường là giá SJC)
-            gia_str = gia_elements[0].get_text(strip=True)
-            
-            # Xử lý chuỗi: xóa dấu chấm, đổi dấu phẩy thành chấm để chuyển sang số
-            # Ví dụ: "85.000.000" -> "85000000" -> 85.0
-            gia_so = float(gia_str.replace('.', '').replace(',', '.')) / 1000000
+        # Dùng Regex để tìm cụm "Bán ra" kèm con số phía sau
+        # Nó sẽ tìm dạng: "Bán ra 85.500" hoặc "Bán ra 165.500"
+        match = re.search(r'Bán\s+ra\s*([\d\.,]+)', full_text)
+        
+        if match:
+            gia_chu = match.group(1)
+            # Làm sạch số: bỏ dấu chấm/phẩy thừa
+            gia_sach = gia_chu.replace('.', '').replace(',', '')
+            # Chuyển về đơn vị triệu (VD: 165500 -> 165.5 triệu)
+            gia_so = float(gia_sach) / 1000
             
             print(f"--- DA TIM THAY GIA: {gia_so} trieu ---")
 
-            # Cài đặt ngưỡng để test (Bạn có thể sửa lại sau)
-            GIA_BAO_DONG = 100.0 # Để số cao hẳn để test gửi tin nhắn
+            # NGƯỠNG BÁO ĐỘNG (Bạn sửa 2 số này theo ý mình)
+            GIA_BAO_DONG_TEST = 200.0 
 
-            if gia_so < GIA_BAO_DONG:
-                thong_bao = f"📉 Cập nhật giá vàng: {gia_so} triệu\nLink: {url}"
-                gui_telegram(thong_bao)
-                print("Da gui tin nhan qua Telegram!")
-            else:
-                print("Chua dat nguong bao dong.")
+            if gia_so < GIA_BAO_DONG_TEST:
+                msg = f"🔔 Cập nhật giá vàng: {gia_so} triệu\nNguồn: {url}"
+                gui_telegram(msg)
+                print("Da gui tin nhan!")
         else:
-            print("LỖI: Khong tìm thay the <td class='ban-ra'>. Web có the da doi giao dien.")
+            print("LỖI: Khong tìm thay chu 'Ban ra' tren trang web.")
             
     except Exception as e:
         print(f"Lỗi hệ thống: {e}")
 
 if __name__ == "__main__":
     kiem_tra_gia_vang()
-
